@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>English Listening Enhancement</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Babel for JSX compilation in browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase Compat Libraries (For single HTML file usage) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* Custom Scrollbar hide */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ==========================================
+    // 1. SYSTEM CONFIGURATION (EDIT THIS SECTION)
+    // ==========================================
+    
+    // A. Paste your Google Sheets CSV links here
+    const GOOGLE_SHEETS = {
+      schedule: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pubhtml?gid=0&single=true",      // Paste Schedule CSV link here
+      students: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pubhtml?gid=1577819653&single=true",      // Paste Students CSV link here
+      practiceVocab: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pubhtml?gid=1998898195&single=true", // Paste Practice Vocab CSV link here
+      dseVocab: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pubhtml?gid=902862313&single=true"       // Paste DSE Vocab CSV link here
+    };
+
+    // B. Paste your Firebase Config here (Create a free project at firebase.google.com)
+    const firebaseConfig = {
+     apiKey: "AIzaSyCCAxKgslV0DS0OVjdS43H-nTqAn2xiobw",
+  authDomain: "listeningenhancement.firebaseapp.com",
+  projectId: "listeningenhancement",
+  storageBucket: "listeningenhancement.firebasestorage.app",
+  messagingSenderId: "472957217955",
+  appId: "1:472957217955:web:ee8bd482d33f7055272316",
+  measurementId: "G-QFQ21CH5YY"
+    };
+
+    // Initialize Firebase
+    let db = null;
+    let auth = null;
+    try {
+      if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        auth = firebase.auth();
+      } else {
+        console.warn("Firebase is not configured. Marks and Attendance will not be saved. Please update firebaseConfig.");
+      }
+    } catch (e) {
+      console.error("Firebase init error:", e);
+    }
+
+    // ==========================================
+    // 2. FALLBACK DATA (If Google Sheets are empty)
+    // ==========================================
+    const fallbackSchedule = [
+      { id: 'session_1', date: "April 14 (Tue)", time: "7:35 AM", venue: "Lecture Theatre", focus: "Module 1: Getting Along", hasMarks: "Yes" },
+      { id: 'session_2', date: "April 15 (Wed)", time: "4:15 PM", venue: "Room 605", focus: "Module 9: Entertainment", hasMarks: "Yes" },
+      { id: 'session_3', date: "April 21 (Tue)", time: "7:35 AM", venue: "Lecture Theatre", focus: "Test Paper Explanation", hasMarks: "No" }
+    ];
+
+    const fallbackStudents = [
+      { id: "5A01", class: "5A", classNo: "01", name: "陳大文", englishName: "Chan Tai Man, Peter" },
+      { id: "5A02", class: "5A", classNo: "02", name: "李嘉欣", englishName: "Lee Ka Yan, Mary" },
+      { id: "5B01", class: "5B", classNo: "01", name: "王小明", englishName: "Wong Siu Ming, Leo" }
+    ];
+
+    const fallbackPracticeVocab = [
+      { sessionDate: "April 14 (Tue)", word: "Recommend", pos: "v.", meaning: "推薦", example: "The teacher recommended this book." },
+      { sessionDate: "April 14 (Tue)", word: "Atmosphere", pos: "n.", meaning: "氣氛", example: "The restaurant has a romantic atmosphere." }
+    ];
+
+    const fallbackDseVocab = {
+      "Module 1: Getting Along With Others": [
+        { word: "Adolescence", pos: "n.", meaning: "青少年時期", example: "Adolescence is a crucial stage." }
+      ]
+    };
+
+    const parseCSV = (text) => {
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) return [];
+      const headers = lines[0].split(',').map(h => h.trim().replace(/\r/g, ''));
+      return lines.slice(1).map(line => {
+        const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').trim().replace(/\r/g, ''));
+        return headers.reduce((obj, header, i) => { obj[header] = values[i] || ''; return obj; }, {});
+      });
+    };
+
+    // ==========================================
+    // 3. MAIN APPLICATION
+    // ==========================================
+    function App() {
+      const [activeTab, setActiveTab] = useState('schedule');
+      const [role, setRole] = useState('student');
+      const [showLoginModal, setShowLoginModal] = useState(false);
+      const [passwordInput, setPasswordInput] = useState('');
+      const [loginError, setLoginError] = useState(false);
+      const [isSyncing, setIsSyncing] = useState(false);
+      const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+      // App Data States
+      const [appSchedule, setAppSchedule] = useState(fallbackSchedule);
+      const [appStudents, setAppStudents] = useState(fallbackStudents);
+      const [practiceVocab, setPracticeVocab] = useState(fallbackPracticeVocab);
+      const [dseVocab, setDseVocab] = useState(fallbackDseVocab);
+
+      // Database States
+      const [user, setUser] = useState(null);
+      const [cloudMarks, setCloudMarks] = useState({});
+      const [cloudAttendance, setCloudAttendance] = useState({});
+
+      const fetchGoogleSheetsData = async () => {
+        setIsSyncing(true);
+        try {
+          if (GOOGLE_SHEETS.schedule) {
+            const res = await fetch(GOOGLE_SHEETS.schedule);
+            const parsed = parseCSV(await res.text());
+            setAppSchedule(parsed.map(s => ({ ...s, id: `${s.date}_${s.time}` })));
+          }
+          if (GOOGLE_SHEETS.students) {
+            const res = await fetch(GOOGLE_SHEETS.students);
+            setAppStudents(parseCSV(await res.text()));
+          }
+          // Note: Add vocab fetch logic similarly if needed
+        } catch (error) { console.error("Error fetching sheets:", error); }
+        setTimeout(() => setIsSyncing(false), 800);
+      };
+
+      useEffect(() => { fetchGoogleSheetsData(); }, []);
+
+      useEffect(() => {
+        if (!auth) return;
+        auth.signInAnonymously().catch(console.error);
+        return auth.onAuthStateChanged(setUser);
+      }, []);
+
+      useEffect(() => {
+        if (!user || !db) return;
+        const unsubscribeMarks = db.collection('marks').onSnapshot((snapshot) => {
+          const data = {}; snapshot.forEach(doc => { data[doc.id] = doc.data(); }); setCloudMarks(data);
+        });
+        const unsubscribeAtt = db.collection('attendance').onSnapshot((snapshot) => {
+          const data = {}; snapshot.forEach(doc => { data[doc.id] = doc.data(); }); setCloudAttendance(data);
+        });
+        return () => { unsubscribeMarks(); unsubscribeAtt(); };
+      }, [user]);
+
+      const handleLogin = (e) => {
+        e.preventDefault();
+        if (passwordInput === 'ccassenglish') {
+          setRole('teacher'); setShowLoginModal(false); setPasswordInput(''); setLoginError(false); setActiveTab('attendance'); setIsMobileMenuOpen(false);
+        } else { setLoginError(true); }
+      };
+
+      const navTo = (tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); };
+
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-800">
+          
+          {/* Mobile Top Bar */}
+          <div className="md:hidden bg-indigo-900 text-white p-4 flex justify-between items-center shadow-md print:hidden z-20 sticky top-0">
+            <h1 className="font-bold truncate pr-4">English Listening</h1>
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 bg-indigo-800 rounded-lg">
+              <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-xl`}></i>
+            </button>
+          </div>
+
+          {/* Password Modal */}
+          {showLoginModal && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:hidden">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
+                <div className="bg-indigo-900 p-4 flex justify-between items-center text-white">
+                  <h3 className="font-bold flex items-center"><i className="fas fa-lock mr-2"></i> Teacher Access</h3>
+                  <button onClick={() => {setShowLoginModal(false); setLoginError(false);}} className="text-indigo-200 hover:text-white"><i className="fas fa-times"></i></button>
+                </div>
+                <form onSubmit={handleLogin} className="p-6">
+                  <p className="text-slate-500 mb-4 text-sm">Enter the teacher password to unlock.</p>
+                  <input 
+                    type="password" autoFocus placeholder="Password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)}
+                    className={`w-full p-3 rounded-xl border-2 mb-2 focus:outline-none ${loginError ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-indigo-500'}`}
+                  />
+                  {loginError && <p className="text-red-500 text-xs font-bold mb-4">Incorrect password.</p>}
+                  <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl mt-4 transition-colors">Unlock Dashboard</button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Sidebar Navigation */}
+          <nav className={`fixed inset-y-0 left-0 z-40 w-64 bg-indigo-900 text-white transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 flex flex-col print:hidden shadow-2xl md:shadow-none`}>
+            <div className="p-6 hidden md:block">
+              <h1 className="text-xl font-bold leading-tight mb-2 pb-4 border-b border-indigo-700">English Listening Enhancement</h1>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto px-3 py-4 md:py-0 space-y-1 scrollbar-hide">
+              <NavItem icon="fa-calendar-alt" label="Dates and Venue" isActive={activeTab === 'schedule'} onClick={() => navTo('schedule')} />
+              
+              <div className="pt-6 pb-2 px-4 text-xs font-bold text-indigo-400 uppercase tracking-wider">Vocabulary Review</div>
+              <NavItem icon="fa-book-open" label="Practice Session" isActive={activeTab === 'vocab_session'} onClick={() => navTo('vocab_session')} />
+              <NavItem icon="fa-layer-group" label="DSE (9 Modules)" isActive={activeTab === 'vocab_dse'} onClick={() => navTo('vocab_dse')} />
+              
+              <div className="pt-6 pb-2 px-4 text-xs font-bold text-indigo-400 uppercase tracking-wider">Student Profile</div>
+              {role === 'student' && (
+                <NavItem icon="fa-chart-line" label="My Performance" isActive={activeTab === 'my_performance'} onClick={() => navTo('my_performance')} />
+              )}
+
+              {role === 'teacher' && (
+                <>
+                  <NavItem icon="fa-calendar-check" label="Take Attendance" isActive={activeTab === 'attendance'} onClick={() => navTo('attendance')} />
+                  <NavItem icon="fa-edit" label="Input Grades" isActive={activeTab === 'grades'} onClick={() => navTo('grades')} />
+                  <div className="pt-4 pb-2 px-4 text-xs font-bold text-indigo-400 uppercase tracking-wider">Admin</div>
+                  <NavItem icon="fa-print" label="Print Reports" isActive={activeTab === 'reports'} onClick={() => navTo('reports')} />
+                </>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-indigo-800 bg-indigo-950/30 space-y-3 pb-8 md:pb-4">
+              <button onClick={fetchGoogleSheetsData} className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-lg transition-colors text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-800">
+                <i className={`fas fa-sync-alt ${isSyncing ? "fa-spin" : ""}`}></i><span>Sync Google Sheets</span>
+              </button>
+              {role === 'student' ? (
+                 <button onClick={() => {setShowLoginModal(true); setIsMobileMenuOpen(false);}} className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-lg transition-colors text-xs font-bold text-slate-400 hover:text-white bg-black/20 hover:bg-black/40">
+                   <i className="fas fa-lock"></i><span>Teacher Login</span>
+                 </button>
+              ) : (
+                <button onClick={() => { setRole('student'); navTo('schedule'); }} className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-lg transition-colors text-xs font-bold text-amber-300 hover:text-white bg-amber-500/20 hover:bg-amber-500/40 border border-amber-500/30">
+                   <i className="fas fa-unlock"></i><span>Lock Teacher App</span>
+                 </button>
+              )}
+            </div>
+          </nav>
+          
+          {isMobileMenuOpen && <div className="fixed inset-0 bg-slate-900/50 z-30 md:hidden print:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
+
+          <main className="flex-1 p-4 md:p-8 overflow-y-auto print:p-0 print:overflow-visible">
+            <div className="max-w-5xl mx-auto print:max-w-none">
+              {!db && <div className="bg-amber-100 text-amber-800 p-4 rounded-xl mb-4 text-sm font-bold print:hidden"><i className="fas fa-exclamation-triangle mr-2"></i> Firebase Database is not configured. Marks and attendance cannot be saved.</div>}
+              
+              {activeTab === 'schedule' && <DatesAndVenue schedule={appSchedule} />}
+              {activeTab === 'vocab_session' && <SessionVocab vocabData={practiceVocab} />}
+              {activeTab === 'vocab_dse' && <DseVocab vocabData={dseVocab} />}
+              {role === 'student' && activeTab === 'my_performance' && <StudentPerformance students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} cloudAttendance={cloudAttendance} />}
+              {role === 'teacher' && activeTab === 'attendance' && <Attendance students={appStudents} schedule={appSchedule} cloudAttendance={cloudAttendance} db={db} />}
+              {role === 'teacher' && activeTab === 'grades' && <Gradebook students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} db={db} />}
+              {role === 'teacher' && activeTab === 'reports' && <TeacherReports students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} cloudAttendance={cloudAttendance} />}
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    function NavItem({ icon, label, isActive, onClick }) {
+      return (
+        <li>
+          <button onClick={onClick} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-indigo-800 text-white shadow-sm' : 'text-indigo-200 hover:bg-indigo-800/50 hover:text-white'}`}>
+            <i className={`fas ${icon} w-5 text-center`}></i>
+            <span className="font-medium text-left">{label}</span>
+          </button>
+        </li>
+      );
+    }
+
+    function DatesAndVenue({ schedule }) {
+      return (
+        <div className="animate-fade-in">
+          <div className="mb-6"><h2 className="text-3xl font-bold mb-2 text-slate-800">Dates and Venue</h2></div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm uppercase tracking-wider">
+                    <th className="p-4 font-bold">Date</th><th className="p-4 font-bold">Time</th><th className="p-4 font-bold">Venue</th><th className="p-4 font-bold">Focus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schedule.map((session, index) => {
+                    const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
+                    return (
+                      <tr key={index} className="border-b border-slate-100 hover:bg-indigo-50/30">
+                        <td className="p-4 font-semibold text-slate-800 whitespace-nowrap"><div className="flex items-center"><i className="fas fa-calendar-alt mr-2 text-indigo-500"></i>{session.date}</div></td>
+                        <td className="p-4 text-slate-600 whitespace-nowrap"><div className="flex items-center"><i className="fas fa-clock mr-2 text-slate-400"></i>{session.time}</div></td>
+                        <td className="p-4 font-medium text-slate-700 whitespace-nowrap"><div className="flex items-center"><i className="fas fa-map-marker-alt mr-2 text-amber-500"></i>{session.venue}</div></td>
+                        <td className="p-4">
+                          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                            <span className="bg-indigo-100 text-indigo-700 py-1 px-3 rounded-full text-sm font-semibold">{session.focus}</span>
+                            {isExplanationOnly && <span className="bg-slate-100 text-slate-500 border border-slate-200 py-1 px-2 rounded-md text-[10px] uppercase font-bold tracking-wider">Explanation Only</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function SessionVocab({ vocabData }) {
+      const uniqueDates = [...new Set(vocabData.map(v => v.sessionDate))].filter(Boolean);
+      const [selectedDate, setSelectedDate] = useState(uniqueDates[0] || "");
+      const filteredVocab = vocabData.filter(v => v.sessionDate === selectedDate);
+      return (
+        <div className="animate-fade-in">
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div><h2 className="text-3xl font-bold mb-2 text-slate-800">Practice Session Vocab</h2></div>
+            <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full md:w-64">
+              {uniqueDates.map(date => <option key={date} value={date}>{date}</option>)}
+            </select>
+          </div>
+          {filteredVocab.length > 0 ? <FlashcardSet list={filteredVocab} key={selectedDate} /> : <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border shadow-sm">No vocabulary loaded.</div>}
+        </div>
+      );
+    }
+
+    function DseVocab({ vocabData }) {
+      const modules = Object.keys(vocabData);
+      const [selectedModule, setSelectedModule] = useState(modules[0] || "");
+      const currentList = vocabData[selectedModule] || [];
+      return (
+        <div className="animate-fade-in">
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div><h2 className="text-3xl font-bold mb-2 text-slate-800">DSE 9 Modules Vocab</h2></div>
+            <select value={selectedModule} onChange={(e) => setSelectedModule(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full md:w-64">
+              {modules.map(mod => <option key={mod} value={mod}>{mod}</option>)}
+            </select>
+          </div>
+          {currentList.length > 0 ? <FlashcardSet list={currentList} key={selectedModule} /> : <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border shadow-sm">No vocabulary loaded.</div>}
+        </div>
+      );
+    }
+
+    function FlashcardSet({ list }) {
+      const [currentIndex, setCurrentIndex] = useState(0);
+      const [isFlipped, setIsFlipped] = useState(false);
+      const currentWord = list[currentIndex];
+
+      const handleNext = () => { setIsFlipped(false); setCurrentIndex((prev) => (prev + 1) % list.length); };
+      const handlePrev = () => { setIsFlipped(false); setCurrentIndex((prev) => (prev - 1 + list.length) % list.length); };
+      const playAudio = (e) => {
+        e.stopPropagation();
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(currentWord.word);
+          utterance.lang = 'en-GB'; utterance.rate = 0.9; window.speechSynthesis.speak(utterance);
+        }
+      };
+      if (!currentWord) return null;
+
+      return (
+        <div className="max-w-3xl mx-auto">
+          <div className="relative w-full h-72 md:h-80 mb-8 cursor-pointer" onClick={() => setIsFlipped(!isFlipped)} style={{ perspective: '1000px' }}>
+            <div className="w-full h-full absolute transition-transform duration-500 shadow-xl rounded-3xl" style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
+              <div className="absolute inset-0 bg-white rounded-3xl border-2 border-indigo-50 flex flex-col items-center justify-center p-4 md:p-8" style={{ backfaceVisibility: 'hidden' }}>
+                 <button onClick={playAudio} className="mb-6 flex items-center space-x-2 bg-indigo-100 text-indigo-700 px-4 md:px-6 py-2 md:py-3 rounded-full hover:bg-indigo-200 shadow-sm z-10"><i className="fas fa-volume-up text-xl"></i><span className="font-bold text-sm md:text-base">Play Audio</span></button>
+                 <h3 className="text-4xl md:text-5xl font-bold text-slate-800 mb-2 text-center">{currentWord.word}</h3><p className="text-lg md:text-xl text-slate-400 italic">{currentWord.pos}</p>
+              </div>
+              <div className="absolute inset-0 bg-indigo-600 text-white rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                <h3 className="text-3xl md:text-4xl font-bold mb-4 md:mb-6 text-center">{currentWord.meaning}</h3>
+                <div className="bg-white/10 p-4 md:p-6 rounded-xl w-full max-w-md text-center"><p className="text-indigo-200 text-xs md:text-sm uppercase font-semibold">Example</p><p className="text-base md:text-lg font-medium leading-relaxed">"{currentWord.example}"</p></div>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-between items-center bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200">
+            <button onClick={handlePrev} className="p-2 md:p-3 text-slate-400 hover:text-indigo-600"><i className="fas fa-chevron-left text-2xl"></i></button>
+            <span className="font-bold text-slate-500 text-sm md:text-base">Word {currentIndex + 1} of {list.length}</span>
+            <button onClick={handleNext} className="p-2 md:p-3 text-slate-400 hover:text-indigo-600"><i className="fas fa-chevron-right text-2xl"></i></button>
+          </div>
+        </div>
+      );
+    }
+
+    function StudentPerformance({ students, schedule, cloudMarks, cloudAttendance }) {
+      const [selectedStudent, setSelectedStudent] = useState('');
+
+      let graphData = [];
+      if (selectedStudent) {
+        schedule.forEach((session, index) => {
+          const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
+          if (isExplanationOnly) return; 
+
+          const isMorning = session.time.includes("AM") || session.time.includes("am");
+          const sessionMarks = cloudMarks[session.id] || { students: {}, maxMarks: {} };
+          const myMarks = sessionMarks.students[selectedStudent] || {};
+          const maxMarks = sessionMarks.maxMarks || {};
+          const att = (cloudAttendance[session.id] || {})[selectedStudent] || 'Not Recorded';
+          
+          const tasks = isMorning ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
+          let totalScore = 0; let totalMax = 0;
+          tasks.forEach(tKey => { totalScore += parseInt(myMarks[tKey] || 0); totalMax += parseInt(maxMarks[tKey] || 0); });
+
+          if (totalMax > 0 && att !== 'Not Recorded' && att !== 'Absent') {
+            const percentage = Math.round((totalScore / totalMax) * 100);
+            graphData.push({ label: `S${index + 1}`, fullDate: session.date, score: totalScore, max: totalMax, percentage });
+          }
+        });
+      }
+
+      return (
+        <div className="animate-fade-in max-w-4xl mx-auto">
+          <div className="mb-6"><h2 className="text-2xl md:text-3xl font-bold mb-2 text-slate-800">My Performance</h2></div>
+          
+          <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border mb-8">
+            <select value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} className="w-full bg-slate-50 border-2 py-3 px-4 rounded-xl font-medium text-base md:text-lg truncate">
+              <option value="">-- Choose Your Profile --</option>
+              {students.map(s => <option key={s.id} value={s.id}>{s.class} ({s.classNo}) - {s.name} ({s.englishName})</option>)}
+            </select>
+          </div>
+
+          {selectedStudent && (
+            <div className="space-y-8 animate-fade-in">
+              {graphData.length > 0 && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
+                  <h3 className="font-bold text-lg mb-4 flex items-center text-slate-700 min-w-[400px]"><i className="fas fa-chart-bar mr-2 text-indigo-500"></i> Score Percentage Trend</h3>
+                  <div className="h-48 md:h-64 w-full relative pt-4 pb-8 min-w-[400px]">
+                    <div className="absolute inset-0 flex flex-col justify-between text-xs text-slate-300 pb-8 z-0">
+                      <div className="border-b border-dashed border-slate-200 w-full flex items-end"><span className="-translate-y-2">100%</span></div>
+                      <div className="border-b border-dashed border-slate-200 w-full flex items-end"><span className="-translate-y-2">50%</span></div>
+                      <div className="border-b border-solid border-slate-300 w-full flex items-end"><span className="-translate-y-2">0%</span></div>
+                    </div>
+                    <svg className="absolute inset-0 h-[calc(100%-2rem)] w-full z-10 overflow-visible" preserveAspectRatio="none">
+                      {graphData.length > 1 && (
+                        <polyline 
+                          points={graphData.map((d, i) => `${(i / (graphData.length - 1)) * 100}%,${100 - d.percentage}%`).join(' ')} 
+                          fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" 
+                        />
+                      )}
+                      {graphData.map((d, i) => (
+                        <circle 
+                          key={i} cx={`${graphData.length > 1 ? (i / (graphData.length - 1)) * 100 : 50}%`} cy={`${100 - d.percentage}%`} 
+                          r="5" fill="#4f46e5" stroke="white" strokeWidth="2" 
+                        />
+                      ))}
+                    </svg>
+                    <div className="absolute bottom-0 left-0 w-full flex justify-between px-2 text-xs font-bold text-slate-500">
+                      {graphData.map((d, i) => (
+                        <div key={i} className={`text-center ${graphData.length > 1 ? 'absolute transform -translate-x-1/2' : 'w-full text-center'}`} style={{ left: graphData.length > 1 ? `${(i / (graphData.length - 1)) * 100}%` : '0' }}>
+                          {d.label}<br/><span className="text-[10px] font-normal">{d.percentage}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {schedule.map(session => {
+                const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
+                const isMorning = session.time.includes("AM") || session.time.includes("am");
+                const sessionMarks = cloudMarks[session.id] || { students: {}, maxMarks: {} };
+                const myMarks = sessionMarks.students[selectedStudent] || {};
+                const maxMarks = sessionMarks.maxMarks || {};
+                const myAttendance = (cloudAttendance[session.id] || {})[selectedStudent] || 'Not Recorded';
+                
+                const tasks = isMorning ? [{ key: 't1', label: 'Task 1' }, { key: 't2', label: 'Task 2' }, { key: 't3', label: 'Task 3' }] 
+                                        : [{ key: 't8', label: 'Task 8' }, { key: 't9', label: 'Task 9' }, { key: 't10', label: 'Task 10' }];
+
+                let totalScore = 0; let totalMax = 0;
+                tasks.forEach(t => { totalScore += parseInt(myMarks[t.key] || 0); totalMax += parseInt(maxMarks[t.key] || 0); });
+
+                if (myAttendance === 'Not Recorded' && totalScore === 0 && !isExplanationOnly) return null;
+
+                return (
+                  <div key={session.id} className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                    <div className="bg-slate-50 p-4 md:p-5 border-b flex flex-col md:flex-row justify-between md:items-center gap-3">
+                      <div>
+                        <h3 className="font-bold text-lg">{session.date} <span className="text-sm font-normal text-slate-500">({session.time})</span></h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className={`text-xs font-bold px-3 py-1 rounded-full border ${myAttendance === 'Present' ? 'bg-green-100 text-green-700 border-green-200' : myAttendance === 'Late' ? 'bg-amber-100 text-amber-700 border-amber-200' : myAttendance === 'Absent' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-slate-200 text-slate-600'}`}>Attendance: {myAttendance}</span>
+                          {isExplanationOnly && <span className="text-xs bg-slate-200 text-slate-600 px-3 py-1 rounded-full font-bold">Paper Explanation</span>}
+                        </div>
+                      </div>
+                      {!isExplanationOnly && totalMax > 0 && <div className="text-left md:text-right"><span className="text-xs text-slate-500 uppercase font-bold mr-2">Total Score</span><span className="text-3xl font-black text-indigo-600">{totalScore}<span className="text-lg text-slate-400">/{totalMax}</span></span></div>}
+                    </div>
+                    {!isExplanationOnly && totalMax > 0 && (
+                      <div className="p-4 md:p-6 grid grid-cols-3 gap-2 md:gap-4">
+                        {tasks.map(t => (
+                          <div key={t.key} className="text-center p-2 md:p-4 bg-slate-50 rounded-xl border">
+                            <p className="text-[10px] md:text-xs uppercase font-bold mb-1">{t.label}</p>
+                            <p className="text-lg md:text-2xl font-bold">{myMarks[t.key] || 0} <span className="text-xs md:text-sm text-slate-400">/ {maxMarks[t.key] || 0}</span></p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function Attendance({ students, schedule, cloudAttendance, db }) {
+      const [selectedSession, setSelectedSession] = useState(schedule[0]?.id || "");
+      const [localAttendance, setLocalAttendance] = useState({});
+      const [isSaving, setIsSaving] = useState(false);
+
+      useEffect(() => {
+        if (!selectedSession) return;
+        const sessionData = cloudAttendance[selectedSession] || {};
+        const initialized = students.reduce((acc, student) => ({
+          ...acc, [student.id]: sessionData[student.id] || 'Present' 
+        }), {});
+        setLocalAttendance(initialized);
+      }, [cloudAttendance, selectedSession, students]);
+
+      const handleSaveToCloud = async () => {
+        if (!db) return alert("Database connection not ready.");
+        setIsSaving(true);
+        try {
+          await db.collection('attendance').doc(selectedSession).set(localAttendance, { merge: true });
+        } catch (e) { console.error(e); alert("Failed to save attendance."); }
+        setTimeout(() => setIsSaving(false), 600);
+      };
+
+      if (!schedule.length) return <div>No schedule loaded from Google Sheets.</div>;
+
+      return (
+        <div className="animate-fade-in">
+          <div className="flex flex-col md:flex-row justify-between md:items-end mb-6 gap-4">
+            <div><h2 className="text-2xl font-bold mb-2 flex items-center">Attendance</h2></div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold flex-1 w-full md:w-auto">
+                {schedule.map(s => <option key={s.id} value={s.id}>{s.date} ({s.time})</option>)}
+              </select>
+              <button onClick={handleSaveToCloud} disabled={isSaving} className={`text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center ${isSaving ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                <i className="fas fa-save mr-2"></i> {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-max">
+              <thead>
+                <tr className="bg-slate-50 border-b text-slate-500 text-sm uppercase tracking-wider">
+                  <th className="p-3 md:p-4">Class</th><th className="p-3 md:p-4">Name</th><th className="p-3 md:p-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map(student => (
+                  <tr key={student.id} className="border-b hover:bg-slate-50">
+                    <td className="p-3 md:p-4 font-semibold text-slate-800 whitespace-nowrap">{student.class} ({student.classNo})</td>
+                    <td className="p-3 md:p-4 font-semibold text-slate-800"><span className="block md:inline">{student.name}</span> <span className="text-[10px] md:text-xs text-slate-400 font-normal md:ml-2 block md:inline">{student.englishName}</span></td>
+                    <td className="p-3 md:p-4">
+                      <div className="flex justify-center space-x-1 md:space-x-2">
+                        <button onClick={() => setLocalAttendance(p => ({...p, [student.id]: 'Present'}))} className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold border ${localAttendance[student.id] === 'Present' ? 'bg-green-500 text-white' : 'bg-white text-slate-600'}`}>P</button>
+                        <button onClick={() => setLocalAttendance(p => ({...p, [student.id]: 'Late'}))} className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold border ${localAttendance[student.id] === 'Late' ? 'bg-amber-500 text-white' : 'bg-white text-slate-600'}`}>L</button>
+                        <button onClick={() => setLocalAttendance(p => ({...p, [student.id]: 'Absent'}))} className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold border ${localAttendance[student.id] === 'Absent' ? 'bg-red-500 text-white' : 'bg-white text-slate-600'}`}>A</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function Gradebook({ students, schedule, cloudMarks, db }) {
+      const [selectedSessionId, setSelectedSessionId] = useState(schedule[0]?.id || "");
+      const [localData, setLocalData] = useState({ maxMarks: {}, students: {} });
+      const [isSaving, setIsSaving] = useState(false);
+
+      const sessionConfig = schedule.find(s => s.id === selectedSessionId);
+      const isExplanationOnly = ['no', 'false', 'n'].includes((sessionConfig?.hasMarks || '').toLowerCase());
+      const isMorning = sessionConfig?.time.includes("AM") || sessionConfig?.time.includes("am");
+      const tasks = isMorning ? [{ key: 't1', label: 'T1' }, { key: 't2', label: 'T2' }, { key: 't3', label: 'T3' }] : [{ key: 't8', label: 'T8' }, { key: 't9', label: 'T9' }, { key: 't10', label: 'T10' }];
+
+      useEffect(() => {
+        if (!selectedSessionId) return;
+        const sessionData = cloudMarks[selectedSessionId] || { maxMarks: {}, students: {} };
+        if (!sessionData.maxMarks) sessionData.maxMarks = {};
+        if (!sessionData.students) sessionData.students = {};
+        setLocalData(sessionData);
+      }, [cloudMarks, selectedSessionId]);
+
+      const handleMaxMarkChange = (taskKey, value) => { setLocalData(prev => ({ ...prev, maxMarks: { ...prev.maxMarks, [taskKey]: value } })); };
+      const handleStudentMarkChange = (studentId, taskKey, value) => { setLocalData(prev => ({ ...prev, students: { ...prev.students, [studentId]: { ...(prev.students[studentId] || {}), [taskKey]: value } } })); };
+
+      const handleSaveToCloud = async () => {
+        if (!db) return alert("Database connection not ready.");
+        setIsSaving(true);
+        try {
+          await db.collection('marks').doc(selectedSessionId).set(localData, { merge: true });
+        } catch (e) { alert("Failed to save grades."); }
+        setTimeout(() => setIsSaving(false), 800);
+      };
+
+      if (!schedule.length) return <div>No schedule loaded.</div>;
+
+      return (
+        <div className="animate-fade-in">
+          <div className="flex flex-col md:flex-row justify-between md:items-end mb-6 gap-4">
+            <div><h2 className="text-2xl font-bold mb-2">Gradebook</h2></div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold flex-1 w-full md:w-auto">
+                {schedule.map(s => <option key={s.id} value={s.id}>{s.date} ({s.time})</option>)}
+              </select>
+              {!isExplanationOnly && (
+                <button onClick={handleSaveToCloud} disabled={isSaving} className={`text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center ${isSaving ? 'bg-indigo-400' : 'bg-indigo-600'}`}>
+                  <i className="fas fa-database mr-2"></i> {isSaving ? 'Syncing...' : 'Save'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {isExplanationOnly ? (
+            <div className="bg-indigo-50 border border-indigo-100 p-12 rounded-2xl text-center text-indigo-700 shadow-sm flex flex-col items-center">
+              <i className="fas fa-file-alt text-5xl mb-4 opacity-70"></i>
+              <h3 className="text-xl font-bold mb-2">Paper Explanation Only</h3>
+              <p>You indicated in your schedule that this session does not require mark inputs.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-max">
+                <thead>
+                  <tr className="bg-indigo-50/50 border-b">
+                    <th className="p-3 font-bold sticky left-0 bg-indigo-50 border-r z-10 text-xs">Set Full Marks:</th>
+                    {tasks.map(t => (
+                      <th key={t.key} className="p-2 text-center border-r">
+                        <div className="text-[10px] text-indigo-600 mb-1">{t.label} Max</div>
+                        <input type="number" min="0" value={localData.maxMarks[t.key] || ''} onChange={(e) => handleMaxMarkChange(t.key, e.target.value)} className="w-12 md:w-16 border-2 rounded md:p-1 text-center bg-white font-bold text-indigo-700 text-sm"/>
+                      </th>
+                    ))}
+                    <th className="p-3 font-bold text-center text-indigo-600 text-xs">Total</th>
+                  </tr>
+                  <tr className="bg-slate-50 border-b text-slate-500 text-xs md:text-sm uppercase">
+                    <th className="p-3 sticky left-0 bg-slate-50 border-r z-10">Student</th>
+                    {tasks.map(t => <th key={`label_${t.key}`} className="p-2 text-center border-r">{t.label}</th>)}
+                    <th className="p-3 text-center">Calc.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map(student => {
+                    const sm = localData.students[student.id] || {};
+                    let studentTotal = 0; let maxTotal = 0;
+                    tasks.forEach(t => { studentTotal += parseInt(sm[t.key] || 0); maxTotal += parseInt(localData.maxMarks[t.key] || 0); });
+                    return (
+                      <tr key={student.id} className="border-b hover:bg-slate-50">
+                        <td className="p-3 sticky left-0 bg-white font-semibold border-r whitespace-nowrap z-10 text-xs md:text-sm">
+                          {student.class} ({student.classNo}) {student.name}
+                        </td>
+                        {tasks.map(t => (
+                          <td key={t.key} className="p-2 text-center border-r">
+                            <input type="number" min="0" value={sm[t.key] || ''} onChange={(e) => handleStudentMarkChange(student.id, t.key, e.target.value)} className="w-12 md:w-16 border rounded p-1 text-center text-sm focus:ring-1 focus:ring-indigo-500"/>
+                          </td>
+                        ))}
+                        <td className="p-3 text-center font-black text-indigo-700 bg-indigo-50/20 text-sm md:text-lg">{studentTotal > 0 ? studentTotal : '-'} <span className="text-[10px] md:text-xs font-normal text-slate-400">/{maxTotal || 0}</span></td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function TeacherReports({ students, schedule, cloudMarks, cloudAttendance }) {
+      const [reportType, setReportType] = useState('Both'); 
+      const [targetType, setTargetType] = useState('Class'); 
+      const [selectedTarget, setSelectedTarget] = useState('All');
+      
+      const allClasses = [...new Set(students.map(s => s.class))].filter(Boolean).sort();
+      
+      let filteredStudents = students;
+      if (targetType === 'Class' && selectedTarget !== 'All') {
+        filteredStudents = students.filter(s => s.class === selectedTarget);
+      } else if (targetType === 'Individual' && selectedTarget !== 'All') {
+        filteredStudents = students.filter(s => s.id === selectedTarget);
+      }
+
+      useEffect(() => { setSelectedTarget('All'); }, [targetType]);
+      const handlePrint = () => window.print();
+
+      return (
+        <div className="animate-fade-in bg-white print:bg-transparent min-h-screen">
+          <div className="print:hidden mb-6 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+            <h2 className="text-2xl font-bold mb-4 flex items-center text-indigo-900"><i className="fas fa-print mr-2"></i> Generate Report</h2>
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="flex-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Data to Print</label>
+                <select value={reportType} onChange={(e) => setReportType(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
+                  <option value="Both">Attendance & Performance</option>
+                  <option value="Attendance">Attendance Only</option>
+                  <option value="Performance">Performance Only</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Filter By</label>
+                <select value={targetType} onChange={(e) => setTargetType(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
+                  <option value="Class">By Class</option>
+                  <option value="Individual">By Individual Student</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Select Target</label>
+                {targetType === 'Class' ? (
+                  <select value={selectedTarget} onChange={(e) => setSelectedTarget(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
+                    <option value="All">All Classes</option>
+                    {allClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
+                  </select>
+                ) : (
+                  <select value={selectedTarget} onChange={(e) => setSelectedTarget(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full truncate">
+                    <option value="All">All Students</option>
+                    {students.map(s => <option key={s.id} value={s.id}>{s.class} ({s.classNo}) {s.name}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
+            <button onClick={handlePrint} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-md transition-colors flex items-center justify-center">
+              Print / Save as PDF
+            </button>
+          </div>
+
+          <div className="print:block print:text-black">
+            <div className="text-center mb-8 border-b-2 border-slate-800 pb-4">
+              <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider">English Listening Enhancement</h1>
+              <h2 className="text-xl md:text-2xl font-bold mt-1">
+                {reportType === 'Both' ? 'Master Record' : reportType === 'Attendance' ? 'Attendance Record' : 'Performance Record'}
+                {targetType === 'Class' ? (selectedTarget === 'All' ? ' - All Classes' : ` - Class ${selectedTarget}`) : (selectedTarget === 'All' ? ' - All Students' : ` - Individual Report`)}
+              </h2>
+              <p className="text-sm mt-2 text-slate-600 print:text-black">Generated on: {new Date().toLocaleDateString()}</p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-[10px] md:text-sm border border-slate-300 print:border-black">
+                <thead>
+                  <tr className="bg-slate-100 print:bg-transparent">
+                    <th className="p-2 border border-slate-300 print:border-black" rowSpan={reportType === 'Both' ? 2 : 1}>Class</th>
+                    <th className="p-2 border border-slate-300 print:border-black" rowSpan={reportType === 'Both' ? 2 : 1}>No.</th>
+                    <th className="p-2 border border-slate-300 print:border-black min-w-[100px]" rowSpan={reportType === 'Both' ? 2 : 1}>Name</th>
+                    {schedule.map(session => (
+                      <th key={session.id} className="p-2 border border-slate-300 print:border-black text-center" colSpan={reportType === 'Both' ? 2 : 1}>
+                        {session.date}<br/><span className="font-normal text-[8px] md:text-[10px]">{session.time}</span>
+                      </th>
+                    ))}
+                  </tr>
+                  {reportType === 'Both' && (
+                    <tr className="bg-slate-50 print:bg-transparent">
+                      {schedule.map(session => (
+                        <React.Fragment key={`sub_${session.id}`}>
+                          <th className="p-1 border border-slate-300 print:border-black text-center text-[10px] uppercase">Att.</th>
+                          <th className="p-1 border border-slate-300 print:border-black text-center text-[10px] uppercase">Score</th>
+                        </React.Fragment>
+                      ))}
+                    </tr>
+                  )}
+                </thead>
+                <tbody>
+                  {filteredStudents.map(student => (
+                    <tr key={student.id} className="border-b border-slate-300 print:border-black">
+                      <td className="p-2 border border-slate-300 print:border-black font-bold text-center whitespace-nowrap">{student.class}</td>
+                      <td className="p-2 border border-slate-300 print:border-black text-center">{student.classNo}</td>
+                      <td className="p-2 border border-slate-300 print:border-black whitespace-nowrap">
+                        {student.name} <br/> <span className="text-[8px] md:text-[10px] text-slate-500 print:text-black">{student.englishName}</span>
+                      </td>
+                      
+                      {schedule.map(session => {
+                        const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
+                        const att = (cloudAttendance[session.id] || {})[student.id] || '-';
+                        const attText = att === 'Present' ? 'P' : att === 'Late' ? 'L' : att === 'Absent' ? 'A' : '-';
+                        
+                        const isMorning = session.time.includes("AM") || session.time.includes("am");
+                        const sessionMarks = cloudMarks[session.id] || { students: {} };
+                        const myMarks = sessionMarks.students[student.id] || {};
+                        const tasks = isMorning ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
+                        let totalScore = 0; 
+                        tasks.forEach(tKey => { totalScore += parseInt(myMarks[tKey] || 0); });
+                        const scoreText = isExplanationOnly ? 'N/A' : (totalScore > 0 ? totalScore : '-');
+
+                        return (
+                          <React.Fragment key={`data_${session.id}_${student.id}`}>
+                            {(reportType === 'Both' || reportType === 'Attendance') && (
+                              <td className={`p-2 border border-slate-300 print:border-black text-center font-bold ${att === 'Absent' ? 'text-red-600 print:text-black' : ''}`}>
+                                {attText}
+                              </td>
+                            )}
+                            {(reportType === 'Both' || reportType === 'Performance') && (
+                              <td className={`p-2 border border-slate-300 print:border-black text-center font-bold ${isExplanationOnly ? 'text-slate-400 font-normal text-xs print:text-black' : ''}`}>
+                                {scoreText}
+                              </td>
+                            )}
+                          </React.Fragment>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-8 text-xs border border-slate-300 print:border-black p-4 inline-block">
+              <p className="font-bold mb-1">Legend:</p>
+              <ul className="flex flex-wrap gap-4">
+                {(reportType === 'Both' || reportType === 'Attendance') && (
+                  <>
+                    <li><strong>P</strong> = Present</li>
+                    <li><strong>L</strong> = Late</li>
+                    <li><strong>A</strong> = Absent</li>
+                  </>
+                )}
+                <li><strong>-</strong> = No Record</li>
+                {(reportType === 'Both' || reportType === 'Performance') && (
+                  <li><strong>N/A</strong> = No Marks Required (Explanation Only)</li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
