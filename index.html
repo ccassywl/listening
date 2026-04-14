@@ -5,20 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>English Listening Enhancement</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- React & ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   
-  <!-- Babel for JSX compilation in browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Firebase Compat Libraries (For single HTML file usage) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -43,21 +38,21 @@
     
     // A. Paste your Google Sheets CSV links here
     const GOOGLE_SHEETS = {
-      schedule: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pub?gid=0&single=true&output=csv",      // Paste Schedule CSV link here
-      students: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pub?gid=1577819653&single=true&output=csv",      // Paste Students CSV link here
-      practiceVocab: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pub?gid=1998898195&single=true&output=csv", // Paste Practice Vocab CSV link here
-      dseVocab: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pub?gid=902862313&single=true&output=csv"       // Paste DSE Vocab CSV link here
+      schedule: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pub?gid=0&single=true&output=csv",
+      students: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pub?gid=1577819653&single=true&output=csv",
+      practiceVocab: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pub?gid=1998898195&single=true&output=csv",
+      dseVocab: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRLqgc1VjO-pnWxBD9bsbEKBznCjWQonuxWlbYq1PSPVboxNCKxpoJ_7NLGJYRrdQp8RkfmRhfaVq_E/pub?gid=902862313&single=true&output=csv"
     };
 
-    // B. Paste your Firebase Config here (Create a free project at firebase.google.com)
+    // B. Paste your Firebase Config here
     const firebaseConfig = {
-     apiKey: "AIzaSyCCAxKgslV0DS0OVjdS43H-nTqAn2xiobw",
-  authDomain: "listeningenhancement.firebaseapp.com",
-  projectId: "listeningenhancement",
-  storageBucket: "listeningenhancement.firebasestorage.app",
-  messagingSenderId: "472957217955",
-  appId: "1:472957217955:web:ee8bd482d33f7055272316",
-  measurementId: "G-QFQ21CH5YY"
+      apiKey: "AIzaSyCCAxKgslV0DS0OVjdS43H-nTqAn2xiobw",
+      authDomain: "listeningenhancement.firebaseapp.com",
+      projectId: "listeningenhancement",
+      storageBucket: "listeningenhancement.firebasestorage.app",
+      messagingSenderId: "472957217955",
+      appId: "1:472957217955:web:ee8bd482d33f7055272316",
+      measurementId: "G-QFQ21CH5YY"
     };
 
     // Initialize Firebase
@@ -75,31 +70,10 @@
       console.error("Firebase init error:", e);
     }
 
-    // ==========================================
-    // 2. FALLBACK DATA (If Google Sheets are empty)
-    // ==========================================
-    const fallbackSchedule = [
-      { id: 'session_1', date: "April 14 (Tue)", time: "7:35 AM", venue: "Lecture Theatre", focus: "Module 1: Getting Along", hasMarks: "Yes" },
-      { id: 'session_2', date: "April 15 (Wed)", time: "4:15 PM", venue: "Room 605", focus: "Module 9: Entertainment", hasMarks: "Yes" },
-      { id: 'session_3', date: "April 21 (Tue)", time: "7:35 AM", venue: "Lecture Theatre", focus: "Test Paper Explanation", hasMarks: "No" }
-    ];
-
-    const fallbackStudents = [
-      { id: "5A01", class: "5A", classNo: "01", name: "陳大文", englishName: "Chan Tai Man, Peter" },
-      { id: "5A02", class: "5A", classNo: "02", name: "李嘉欣", englishName: "Lee Ka Yan, Mary" },
-      { id: "5B01", class: "5B", classNo: "01", name: "王小明", englishName: "Wong Siu Ming, Leo" }
-    ];
-
-    const fallbackPracticeVocab = [
-      { sessionDate: "April 14 (Tue)", word: "Recommend", pos: "v.", meaning: "推薦", example: "The teacher recommended this book." },
-      { sessionDate: "April 14 (Tue)", word: "Atmosphere", pos: "n.", meaning: "氣氛", example: "The restaurant has a romantic atmosphere." }
-    ];
-
-    const fallbackDseVocab = {
-      "Module 1: Getting Along With Others": [
-        { word: "Adolescence", pos: "n.", meaning: "青少年時期", example: "Adolescence is a crucial stage." }
-      ]
-    };
+    const fallbackSchedule = [];
+    const fallbackStudents = [];
+    const fallbackPracticeVocab = [];
+    const fallbackDseVocab = {};
 
     const parseCSV = (text) => {
       const lines = text.split('\n').filter(l => l.trim());
@@ -123,50 +97,48 @@
       const [isSyncing, setIsSyncing] = useState(false);
       const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-      // App Data States
       const [appSchedule, setAppSchedule] = useState(fallbackSchedule);
       const [appStudents, setAppStudents] = useState(fallbackStudents);
       const [practiceVocab, setPracticeVocab] = useState(fallbackPracticeVocab);
       const [dseVocab, setDseVocab] = useState(fallbackDseVocab);
 
-      // Database States
       const [user, setUser] = useState(null);
       const [cloudMarks, setCloudMarks] = useState({});
       const [cloudAttendance, setCloudAttendance] = useState({});
 
-     const fetchGoogleSheetsData = async () => {
-      setIsSyncing(true);
-      try {
-        if (GOOGLE_SHEETS.schedule) {
-          const res = await fetch(GOOGLE_SHEETS.schedule);
-          const parsed = parseCSV(await res.text());
-          setAppSchedule(parsed.map(s => ({ ...s, id: `${s.date}_${s.time}` })));
-        }
-        if (GOOGLE_SHEETS.students) {
-          const res = await fetch(GOOGLE_SHEETS.students);
-          setAppStudents(parseCSV(await res.text()));
-        }
-        // 讀取 Practice Vocab
-        if (GOOGLE_SHEETS.practiceVocab) {
-          const res = await fetch(GOOGLE_SHEETS.practiceVocab);
-          setPracticeVocab(parseCSV(await res.text()));
-        }
-        // 讀取 DSE Vocab 並依照模組 (module) 分類
-        if (GOOGLE_SHEETS.dseVocab) {
-          const res = await fetch(GOOGLE_SHEETS.dseVocab);
-          const parsed = parseCSV(await res.text());
-          const groupedVocab = {};
-          parsed.forEach(item => {
-            // 假設您的 DSE Vocab CSV 裡面有一欄叫做 "module" 或 "Module"
-            const mod = item.module || item.Module || "Uncategorized";
-            if (!groupedVocab[mod]) groupedVocab[mod] = [];
-            groupedVocab[mod].push(item);
-          });
-          setDseVocab(groupedVocab);
-        }
-      } catch (error) { console.error("Error fetching sheets:", error); }
-      setTimeout(() => setIsSyncing(false), 800);
-    };
+      const fetchGoogleSheetsData = async () => {
+        setIsSyncing(true);
+        try {
+          if (GOOGLE_SHEETS.schedule) {
+            const res = await fetch(GOOGLE_SHEETS.schedule);
+            const parsed = parseCSV(await res.text());
+            setAppSchedule(parsed.map(s => {
+              const safeDate = s.date ? s.date.replace(/\//g, '-') : 'unknown';
+              return { ...s, id: `${safeDate}_${s.time}` };
+            }));
+          }
+          if (GOOGLE_SHEETS.students) {
+            const res = await fetch(GOOGLE_SHEETS.students);
+            setAppStudents(parseCSV(await res.text()));
+          }
+          if (GOOGLE_SHEETS.practiceVocab) {
+            const res = await fetch(GOOGLE_SHEETS.practiceVocab);
+            setPracticeVocab(parseCSV(await res.text()));
+          }
+          if (GOOGLE_SHEETS.dseVocab) {
+            const res = await fetch(GOOGLE_SHEETS.dseVocab);
+            const parsed = parseCSV(await res.text());
+            const groupedVocab = {};
+            parsed.forEach(item => {
+              const mod = item.module || item.Module || "Uncategorized";
+              if (!groupedVocab[mod]) groupedVocab[mod] = [];
+              groupedVocab[mod].push(item);
+            });
+            setDseVocab(groupedVocab);
+          }
+        } catch (error) { console.error("Error fetching sheets:", error); }
+        setTimeout(() => setIsSyncing(false), 800);
+      };
 
       useEffect(() => { fetchGoogleSheetsData(); }, []);
 
@@ -199,7 +171,6 @@
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-800">
           
-          {/* Mobile Top Bar */}
           <div className="md:hidden bg-indigo-900 text-white p-4 flex justify-between items-center shadow-md print:hidden z-20 sticky top-0">
             <h1 className="font-bold truncate pr-4">English Listening</h1>
             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 bg-indigo-800 rounded-lg">
@@ -207,7 +178,6 @@
             </button>
           </div>
 
-          {/* Password Modal */}
           {showLoginModal && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:hidden">
               <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
@@ -228,7 +198,6 @@
             </div>
           )}
 
-          {/* Sidebar Navigation */}
           <nav className={`fixed inset-y-0 left-0 z-40 w-64 bg-indigo-900 text-white transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 flex flex-col print:hidden shadow-2xl md:shadow-none`}>
             <div className="p-6 hidden md:block">
               <h1 className="text-xl font-bold leading-tight mb-2 pb-4 border-b border-indigo-700">English Listening Enhancement</h1>
@@ -250,7 +219,9 @@
                 <>
                   <NavItem icon="fa-calendar-check" label="Take Attendance" isActive={activeTab === 'attendance'} onClick={() => navTo('attendance')} />
                   <NavItem icon="fa-edit" label="Input Grades" isActive={activeTab === 'grades'} onClick={() => navTo('grades')} />
+                  
                   <div className="pt-4 pb-2 px-4 text-xs font-bold text-indigo-400 uppercase tracking-wider">Admin</div>
+                  <NavItem icon="fa-chart-pie" label="Class Statistics" isActive={activeTab === 'teacher_dashboard'} onClick={() => navTo('teacher_dashboard')} />
                   <NavItem icon="fa-print" label="Print Reports" isActive={activeTab === 'reports'} onClick={() => navTo('reports')} />
                 </>
               )}
@@ -284,6 +255,9 @@
               {role === 'student' && activeTab === 'my_performance' && <StudentPerformance students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} cloudAttendance={cloudAttendance} />}
               {role === 'teacher' && activeTab === 'attendance' && <Attendance students={appStudents} schedule={appSchedule} cloudAttendance={cloudAttendance} db={db} />}
               {role === 'teacher' && activeTab === 'grades' && <Gradebook students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} db={db} />}
+              
+              {/* NEW: Teacher Dashboard */}
+              {role === 'teacher' && activeTab === 'teacher_dashboard' && <TeacherDashboard students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} />}
               {role === 'teacher' && activeTab === 'reports' && <TeacherReports students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} cloudAttendance={cloudAttendance} />}
             </div>
           </main>
@@ -413,30 +387,61 @@
       );
     }
 
+    // ==========================================
+    // UPDATED: Student Performance with Participation Rates
+    // ==========================================
     function StudentPerformance({ students, schedule, cloudMarks, cloudAttendance }) {
       const [selectedStudent, setSelectedStudent] = useState('');
 
+      const isMorning = (timeStr) => timeStr && (timeStr.includes('上午') || timeStr.includes('AM') || timeStr.includes('am'));
+      
       let graphData = [];
+      let participation = { morningRate: "N/A", afternoonRate: "N/A", overallRate: "N/A" };
+
       if (selectedStudent) {
+        // Calculate Participation
+        let morningAttended = 0, morningTotal = 0;
+        let afternoonAttended = 0, afternoonTotal = 0;
+
         schedule.forEach((session, index) => {
+          // Only calculate attendance if a teacher has submitted records for this session
+          if (cloudAttendance[session.id]) {
+            const att = cloudAttendance[session.id][selectedStudent];
+            const isPresent = att === 'Present' || att === 'Late' || att === 'P' || att === 'L';
+            if (isMorning(session.time)) {
+              morningTotal++;
+              if (isPresent) morningAttended++;
+            } else {
+              afternoonTotal++;
+              if (isPresent) afternoonAttended++;
+            }
+          }
+
+          // Calculate Graph Marks
           const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
           if (isExplanationOnly) return; 
 
-          const isMorning = session.time.includes("AM") || session.time.includes("am");
           const sessionMarks = cloudMarks[session.id] || { students: {}, maxMarks: {} };
           const myMarks = sessionMarks.students[selectedStudent] || {};
           const maxMarks = sessionMarks.maxMarks || {};
-          const att = (cloudAttendance[session.id] || {})[selectedStudent] || 'Not Recorded';
+          const attForGraph = (cloudAttendance[session.id] || {})[selectedStudent] || 'Not Recorded';
           
-          const tasks = isMorning ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
+          const tasks = isMorning(session.time) ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
           let totalScore = 0; let totalMax = 0;
           tasks.forEach(tKey => { totalScore += parseInt(myMarks[tKey] || 0); totalMax += parseInt(maxMarks[tKey] || 0); });
 
-          if (totalMax > 0 && att !== 'Not Recorded' && att !== 'Absent') {
+          if (totalMax > 0 && attForGraph !== 'Not Recorded' && attForGraph !== 'Absent') {
             const percentage = Math.round((totalScore / totalMax) * 100);
             graphData.push({ label: `S${index + 1}`, fullDate: session.date, score: totalScore, max: totalMax, percentage });
           }
         });
+
+        const calcRate = (attended, total) => total === 0 ? "N/A" : Math.round((attended / total) * 100) + "%";
+        participation = {
+          morningRate: calcRate(morningAttended, morningTotal),
+          afternoonRate: calcRate(afternoonAttended, afternoonTotal),
+          overallRate: calcRate(morningAttended + afternoonAttended, morningTotal + afternoonTotal)
+        };
       }
 
       return (
@@ -452,6 +457,25 @@
 
           {selectedStudent && (
             <div className="space-y-8 animate-fade-in">
+              
+              {/* Participation Rates Widget */}
+              <div className="bg-indigo-50 p-4 md:p-6 rounded-2xl shadow-sm border border-indigo-100 flex flex-col md:flex-row justify-around items-center text-center gap-4">
+                 <div>
+                   <p className="text-xs text-indigo-400 font-bold uppercase tracking-wider mb-1">Morning Attendance</p>
+                   <p className="text-3xl font-black text-indigo-700">{participation.morningRate}</p>
+                 </div>
+                 <div className="hidden md:block w-px h-12 bg-indigo-200"></div>
+                 <div>
+                   <p className="text-xs text-indigo-400 font-bold uppercase tracking-wider mb-1">Afternoon Attendance</p>
+                   <p className="text-3xl font-black text-indigo-700">{participation.afternoonRate}</p>
+                 </div>
+                 <div className="hidden md:block w-px h-12 bg-indigo-200"></div>
+                 <div>
+                   <p className="text-xs text-indigo-600 font-bold uppercase tracking-wider mb-1">Overall Rate</p>
+                   <p className="text-4xl font-black text-indigo-900">{participation.overallRate}</p>
+                 </div>
+              </div>
+
               {graphData.length > 0 && (
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
                   <h3 className="font-bold text-lg mb-4 flex items-center text-slate-700 min-w-[400px]"><i className="fas fa-chart-bar mr-2 text-indigo-500"></i> Score Percentage Trend</h3>
@@ -488,14 +512,12 @@
 
               {schedule.map(session => {
                 const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
-                const isMorning = session.time.includes("AM") || session.time.includes("am");
                 const sessionMarks = cloudMarks[session.id] || { students: {}, maxMarks: {} };
                 const myMarks = sessionMarks.students[selectedStudent] || {};
                 const maxMarks = sessionMarks.maxMarks || {};
                 const myAttendance = (cloudAttendance[session.id] || {})[selectedStudent] || 'Not Recorded';
                 
-                const tasks = isMorning ? [{ key: 't1', label: 'Task 1' }, { key: 't2', label: 'Task 2' }, { key: 't3', label: 'Task 3' }] 
-                                        : [{ key: 't8', label: 'Task 8' }, { key: 't9', label: 'Task 9' }, { key: 't10', label: 'Task 10' }];
+                const tasks = isMorning(session.time) ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
 
                 let totalScore = 0; let totalMax = 0;
                 tasks.forEach(t => { totalScore += parseInt(myMarks[t.key] || 0); totalMax += parseInt(maxMarks[t.key] || 0); });
@@ -606,7 +628,7 @@
 
       const sessionConfig = schedule.find(s => s.id === selectedSessionId);
       const isExplanationOnly = ['no', 'false', 'n'].includes((sessionConfig?.hasMarks || '').toLowerCase());
-      const isMorning = sessionConfig?.time.includes("AM") || sessionConfig?.time.includes("am");
+      const isMorning = sessionConfig?.time.includes("AM") || sessionConfig?.time.includes("am") || sessionConfig?.time.includes("上午");
       const tasks = isMorning ? [{ key: 't1', label: 'T1' }, { key: 't2', label: 'T2' }, { key: 't3', label: 'T3' }] : [{ key: 't8', label: 'T8' }, { key: 't9', label: 'T9' }, { key: 't10', label: 'T10' }];
 
       useEffect(() => {
@@ -700,19 +722,145 @@
       );
     }
 
+    // ==========================================
+    // NEW COMPONENT: Teacher Dashboard
+    // ==========================================
+    function TeacherDashboard({ students, schedule, cloudMarks }) {
+      const isMorning = (timeStr) => timeStr && (timeStr.includes('上午') || timeStr.includes('AM') || timeStr.includes('am'));
+
+      const sessionStats = [];
+      schedule.forEach(session => {
+        const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
+        if (isExplanationOnly) return;
+
+        const sessionMarks = cloudMarks[session.id] || { students: {}, maxMarks: {} };
+        const maxMarks = sessionMarks.maxMarks || {};
+        
+        const tasks = isMorning(session.time) ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
+        let sessionMax = 0;
+        tasks.forEach(t => sessionMax += parseInt(maxMarks[t] || 0));
+
+        if (sessionMax > 0) {
+          let totalPercentage = 0;
+          let scoresArray = [];
+
+          students.forEach(student => {
+            const sm = sessionMarks.students[student.id] || {};
+            let studentTotal = 0;
+            let hasAttempted = false;
+            tasks.forEach(t => {
+              if (sm[t] !== undefined && sm[t] !== "") {
+                hasAttempted = true;
+                studentTotal += parseInt(sm[t] || 0);
+              }
+            });
+
+            if (hasAttempted) {
+              const percentage = Math.round((studentTotal / sessionMax) * 100);
+              totalPercentage += percentage;
+              scoresArray.push({ name: student.name, class: student.class, score: percentage });
+            }
+          });
+
+          scoresArray.sort((a, b) => b.score - a.score);
+          const count = scoresArray.length;
+
+          sessionStats.push({
+            id: session.id,
+            date: session.date,
+            time: session.time,
+            average: count > 0 ? Math.round(totalPercentage / count) : null,
+            top5: scoresArray.slice(0, 5),
+            bottom5: count > 0 ? scoresArray.slice(-5).reverse() : [],
+            count: count
+          });
+        }
+      });
+
+      return (
+        <div className="animate-fade-in">
+          <div className="mb-6"><h2 className="text-3xl font-bold mb-2 text-slate-800">Class Statistics</h2></div>
+          
+          {sessionStats.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border shadow-sm">
+              <i className="fas fa-inbox text-4xl mb-4 opacity-50"></i>
+              <p>No statistics available yet. Please set max marks and input student grades first.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {sessionStats.map(stat => (
+                <div key={stat.id} className="bg-white rounded-2xl shadow-sm border p-6">
+                  <div className="flex justify-between items-center mb-6 border-b pb-4">
+                    <h3 className="font-bold text-xl">{stat.date} <span className="text-sm text-gray-500 font-normal ml-2">({stat.time})</span></h3>
+                    <div className="text-right">
+                      <p className="text-xs text-indigo-400 uppercase font-bold tracking-wider mb-1">Average Score</p>
+                      <p className="text-4xl font-black text-indigo-600">{stat.average !== null ? stat.average + '%' : '-'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Top 5 */}
+                    <div className="bg-green-50/50 p-4 rounded-xl border border-green-100">
+                      <h4 className="font-bold text-green-700 mb-4 flex items-center"><i className="fas fa-trophy mr-2"></i> Top 5 Students</h4>
+                      <ul className="space-y-2">
+                        {stat.top5.map((s, i) => (
+                          <li key={i} className="flex justify-between items-center text-sm bg-white p-3 rounded-lg shadow-sm border border-green-100">
+                            <span><span className="font-black text-green-600 mr-3 w-4 inline-block">#{i+1}</span> <span className="font-bold text-slate-700">{s.class} - {s.name}</span></span>
+                            <span className="font-black text-green-700">{s.score}%</span>
+                          </li>
+                        ))}
+                        {stat.top5.length === 0 && <li className="text-sm text-gray-400 text-center py-2">No data recorded</li>}
+                      </ul>
+                    </div>
+
+                    {/* Bottom 5 */}
+                    <div className="bg-red-50/50 p-4 rounded-xl border border-red-100">
+                      <h4 className="font-bold text-red-700 mb-4 flex items-center"><i className="fas fa-exclamation-circle mr-2"></i> Bottom Students</h4>
+                      <ul className="space-y-2">
+                        {stat.bottom5.map((s, i) => (
+                          <li key={i} className="flex justify-between items-center text-sm bg-white p-3 rounded-lg shadow-sm border border-red-100">
+                            <span><span className="font-black text-red-600 mr-3 w-4 inline-block">#{stat.count - i}</span> <span className="font-bold text-slate-700">{s.class} - {s.name}</span></span>
+                            <span className="font-black text-red-700">{s.score}%</span>
+                          </li>
+                        ))}
+                        {stat.bottom5.length === 0 && <li className="text-sm text-gray-400 text-center py-2">No data recorded</li>}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
+    // UPDATED: Teacher Reports with Session Filtering
+    // ==========================================
     function TeacherReports({ students, schedule, cloudMarks, cloudAttendance }) {
       const [reportType, setReportType] = useState('Both'); 
       const [targetType, setTargetType] = useState('Class'); 
       const [selectedTarget, setSelectedTarget] = useState('All');
+      const [sessionFilter, setSessionFilter] = useState('All'); // NEW: Session Filter
       
       const allClasses = [...new Set(students.map(s => s.class))].filter(Boolean).sort();
-      
+      const isMorning = (timeStr) => timeStr && (timeStr.includes('上午') || timeStr.includes('AM') || timeStr.includes('am'));
+      const isAfternoon = (timeStr) => timeStr && (timeStr.includes('下午') || timeStr.includes('PM') || timeStr.includes('pm'));
+
       let filteredStudents = students;
       if (targetType === 'Class' && selectedTarget !== 'All') {
         filteredStudents = students.filter(s => s.class === selectedTarget);
       } else if (targetType === 'Individual' && selectedTarget !== 'All') {
         filteredStudents = students.filter(s => s.id === selectedTarget);
       }
+
+      // Filter schedule columns based on Morning/Afternoon selection
+      const filteredSchedule = schedule.filter(session => {
+        if (sessionFilter === 'Morning' && !isMorning(session.time)) return false;
+        if (sessionFilter === 'Afternoon' && !isAfternoon(session.time)) return false;
+        return true;
+      });
 
       useEffect(() => { setSelectedTarget('All'); }, [targetType]);
       const handlePrint = () => window.print();
@@ -721,8 +869,19 @@
         <div className="animate-fade-in bg-white print:bg-transparent min-h-screen">
           <div className="print:hidden mb-6 bg-slate-50 p-6 rounded-2xl border border-slate-200">
             <h2 className="text-2xl font-bold mb-4 flex items-center text-indigo-900"><i className="fas fa-print mr-2"></i> Generate Report</h2>
-            <div className="flex flex-col md:flex-row gap-4 mb-4">
-              <div className="flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              
+              {/* NEW: Filter by Session Time */}
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Session Filter</label>
+                <select value={sessionFilter} onChange={(e) => setSessionFilter(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
+                  <option value="All">All Sessions (全時段)</option>
+                  <option value="Morning">Morning Only (僅早讀)</option>
+                  <option value="Afternoon">Afternoon Only (僅課後)</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Data to Print</label>
                 <select value={reportType} onChange={(e) => setReportType(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
                   <option value="Both">Attendance & Performance</option>
@@ -730,15 +889,17 @@
                   <option value="Performance">Performance Only</option>
                 </select>
               </div>
-              <div className="flex-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Filter By</label>
+              
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Filter By Target</label>
                 <select value={targetType} onChange={(e) => setTargetType(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
                   <option value="Class">By Class</option>
-                  <option value="Individual">By Individual Student</option>
+                  <option value="Individual">By Individual</option>
                 </select>
               </div>
-              <div className="flex-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Select Target</label>
+              
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Select Specific</label>
                 {targetType === 'Class' ? (
                   <select value={selectedTarget} onChange={(e) => setSelectedTarget(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
                     <option value="All">All Classes</option>
@@ -752,7 +913,8 @@
                 )}
               </div>
             </div>
-            <button onClick={handlePrint} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-md transition-colors flex items-center justify-center">
+            
+            <button onClick={handlePrint} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 mt-2 rounded-xl font-bold shadow-md transition-colors flex items-center justify-center">
               Print / Save as PDF
             </button>
           </div>
@@ -774,7 +936,7 @@
                     <th className="p-2 border border-slate-300 print:border-black" rowSpan={reportType === 'Both' ? 2 : 1}>Class</th>
                     <th className="p-2 border border-slate-300 print:border-black" rowSpan={reportType === 'Both' ? 2 : 1}>No.</th>
                     <th className="p-2 border border-slate-300 print:border-black min-w-[100px]" rowSpan={reportType === 'Both' ? 2 : 1}>Name</th>
-                    {schedule.map(session => (
+                    {filteredSchedule.map(session => (
                       <th key={session.id} className="p-2 border border-slate-300 print:border-black text-center" colSpan={reportType === 'Both' ? 2 : 1}>
                         {session.date}<br/><span className="font-normal text-[8px] md:text-[10px]">{session.time}</span>
                       </th>
@@ -782,7 +944,7 @@
                   </tr>
                   {reportType === 'Both' && (
                     <tr className="bg-slate-50 print:bg-transparent">
-                      {schedule.map(session => (
+                      {filteredSchedule.map(session => (
                         <React.Fragment key={`sub_${session.id}`}>
                           <th className="p-1 border border-slate-300 print:border-black text-center text-[10px] uppercase">Att.</th>
                           <th className="p-1 border border-slate-300 print:border-black text-center text-[10px] uppercase">Score</th>
@@ -800,15 +962,15 @@
                         {student.name} <br/> <span className="text-[8px] md:text-[10px] text-slate-500 print:text-black">{student.englishName}</span>
                       </td>
                       
-                      {schedule.map(session => {
+                      {filteredSchedule.map(session => {
                         const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
                         const att = (cloudAttendance[session.id] || {})[student.id] || '-';
                         const attText = att === 'Present' ? 'P' : att === 'Late' ? 'L' : att === 'Absent' ? 'A' : '-';
                         
-                        const isMorning = session.time.includes("AM") || session.time.includes("am");
+                        const isMorningSession = isMorning(session.time);
                         const sessionMarks = cloudMarks[session.id] || { students: {} };
                         const myMarks = sessionMarks.students[student.id] || {};
-                        const tasks = isMorning ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
+                        const tasks = isMorningSession ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
                         let totalScore = 0; 
                         tasks.forEach(tKey => { totalScore += parseInt(myMarks[tKey] || 0); });
                         const scoreText = isExplanationOnly ? 'N/A' : (totalScore > 0 ? totalScore : '-');
