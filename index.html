@@ -134,22 +134,39 @@
       const [cloudMarks, setCloudMarks] = useState({});
       const [cloudAttendance, setCloudAttendance] = useState({});
 
-      const fetchGoogleSheetsData = async () => {
-        setIsSyncing(true);
-        try {
-          if (GOOGLE_SHEETS.schedule) {
-            const res = await fetch(GOOGLE_SHEETS.schedule);
-            const parsed = parseCSV(await res.text());
-            setAppSchedule(parsed.map(s => ({ ...s, id: `${s.date}_${s.time}` })));
-          }
-          if (GOOGLE_SHEETS.students) {
-            const res = await fetch(GOOGLE_SHEETS.students);
-            setAppStudents(parseCSV(await res.text()));
-          }
-          // Note: Add vocab fetch logic similarly if needed
-        } catch (error) { console.error("Error fetching sheets:", error); }
-        setTimeout(() => setIsSyncing(false), 800);
-      };
+     const fetchGoogleSheetsData = async () => {
+      setIsSyncing(true);
+      try {
+        if (GOOGLE_SHEETS.schedule) {
+          const res = await fetch(GOOGLE_SHEETS.schedule);
+          const parsed = parseCSV(await res.text());
+          setAppSchedule(parsed.map(s => ({ ...s, id: `${s.date}_${s.time}` })));
+        }
+        if (GOOGLE_SHEETS.students) {
+          const res = await fetch(GOOGLE_SHEETS.students);
+          setAppStudents(parseCSV(await res.text()));
+        }
+        // 讀取 Practice Vocab
+        if (GOOGLE_SHEETS.practiceVocab) {
+          const res = await fetch(GOOGLE_SHEETS.practiceVocab);
+          setPracticeVocab(parseCSV(await res.text()));
+        }
+        // 讀取 DSE Vocab 並依照模組 (module) 分類
+        if (GOOGLE_SHEETS.dseVocab) {
+          const res = await fetch(GOOGLE_SHEETS.dseVocab);
+          const parsed = parseCSV(await res.text());
+          const groupedVocab = {};
+          parsed.forEach(item => {
+            // 假設您的 DSE Vocab CSV 裡面有一欄叫做 "module" 或 "Module"
+            const mod = item.module || item.Module || "Uncategorized";
+            if (!groupedVocab[mod]) groupedVocab[mod] = [];
+            groupedVocab[mod].push(item);
+          });
+          setDseVocab(groupedVocab);
+        }
+      } catch (error) { console.error("Error fetching sheets:", error); }
+      setTimeout(() => setIsSyncing(false), 800);
+    };
 
       useEffect(() => { fetchGoogleSheetsData(); }, []);
 
