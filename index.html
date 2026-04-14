@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>English Listening Enhancement</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#312e81">
+  <link rel="apple-touch-icon" href="logo.png">
   
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -86,7 +90,7 @@
     };
 
     // ==========================================
-    // 3. MAIN APPLICATION
+    // MAIN APPLICATION
     // ==========================================
     function App() {
       const [activeTab, setActiveTab] = useState('schedule');
@@ -256,7 +260,6 @@
               {role === 'teacher' && activeTab === 'attendance' && <Attendance students={appStudents} schedule={appSchedule} cloudAttendance={cloudAttendance} db={db} />}
               {role === 'teacher' && activeTab === 'grades' && <Gradebook students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} db={db} />}
               
-              {/* NEW: Teacher Dashboard */}
               {role === 'teacher' && activeTab === 'teacher_dashboard' && <TeacherDashboard students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} />}
               {role === 'teacher' && activeTab === 'reports' && <TeacherReports students={appStudents} schedule={appSchedule} cloudMarks={cloudMarks} cloudAttendance={cloudAttendance} />}
             </div>
@@ -276,6 +279,7 @@
       );
     }
 
+    // --- Components (DatesAndVenue, Vocab, etc) remain unchanged ---
     function DatesAndVenue({ schedule }) {
       return (
         <div className="animate-fade-in">
@@ -388,23 +392,20 @@
     }
 
     // ==========================================
-    // UPDATED: Student Performance with Participation Rates
+    // UPDATED: Student Performance (Fixed Task Rendering Bug)
     // ==========================================
     function StudentPerformance({ students, schedule, cloudMarks, cloudAttendance }) {
       const [selectedStudent, setSelectedStudent] = useState('');
-
       const isMorning = (timeStr) => timeStr && (timeStr.includes('上午') || timeStr.includes('AM') || timeStr.includes('am'));
       
       let graphData = [];
       let participation = { morningRate: "N/A", afternoonRate: "N/A", overallRate: "N/A" };
 
       if (selectedStudent) {
-        // Calculate Participation
         let morningAttended = 0, morningTotal = 0;
         let afternoonAttended = 0, afternoonTotal = 0;
 
         schedule.forEach((session, index) => {
-          // Only calculate attendance if a teacher has submitted records for this session
           if (cloudAttendance[session.id]) {
             const att = cloudAttendance[session.id][selectedStudent];
             const isPresent = att === 'Present' || att === 'Late' || att === 'P' || att === 'L';
@@ -417,7 +418,6 @@
             }
           }
 
-          // Calculate Graph Marks
           const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
           if (isExplanationOnly) return; 
 
@@ -426,9 +426,15 @@
           const maxMarks = sessionMarks.maxMarks || {};
           const attForGraph = (cloudAttendance[session.id] || {})[selectedStudent] || 'Not Recorded';
           
-          const tasks = isMorning(session.time) ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
+          const tasks = isMorning(session.time) 
+              ? [{ key: 't1', label: 'Task 1' }, { key: 't2', label: 'Task 2' }, { key: 't3', label: 'Task 3' }] 
+              : [{ key: 't8', label: 'Task 8' }, { key: 't9', label: 'Task 9' }, { key: 't10', label: 'Task 10' }];
+          
           let totalScore = 0; let totalMax = 0;
-          tasks.forEach(tKey => { totalScore += parseInt(myMarks[tKey] || 0); totalMax += parseInt(maxMarks[tKey] || 0); });
+          tasks.forEach(t => { 
+             totalScore += parseInt(myMarks[t.key] || 0); 
+             totalMax += parseInt(maxMarks[t.key] || 0); 
+          });
 
           if (totalMax > 0 && attForGraph !== 'Not Recorded' && attForGraph !== 'Absent') {
             const percentage = Math.round((totalScore / totalMax) * 100);
@@ -457,8 +463,6 @@
 
           {selectedStudent && (
             <div className="space-y-8 animate-fade-in">
-              
-              {/* Participation Rates Widget */}
               <div className="bg-indigo-50 p-4 md:p-6 rounded-2xl shadow-sm border border-indigo-100 flex flex-col md:flex-row justify-around items-center text-center gap-4">
                  <div>
                    <p className="text-xs text-indigo-400 font-bold uppercase tracking-wider mb-1">Morning Attendance</p>
@@ -478,7 +482,7 @@
 
               {graphData.length > 0 && (
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
-                  <h3 className="font-bold text-lg mb-4 flex items-center text-slate-700 min-w-[400px]"><i className="fas fa-chart-bar mr-2 text-indigo-500"></i> Score Percentage Trend</h3>
+                  <h3 className="font-bold text-lg mb-4 flex items-center text-slate-700 min-w-[400px]"><i className="fas fa-chart-line mr-2 text-indigo-500"></i> Score Percentage Trend</h3>
                   <div className="h-48 md:h-64 w-full relative pt-4 pb-8 min-w-[400px]">
                     <div className="absolute inset-0 flex flex-col justify-between text-xs text-slate-300 pb-8 z-0">
                       <div className="border-b border-dashed border-slate-200 w-full flex items-end"><span className="-translate-y-2">100%</span></div>
@@ -517,7 +521,9 @@
                 const maxMarks = sessionMarks.maxMarks || {};
                 const myAttendance = (cloudAttendance[session.id] || {})[selectedStudent] || 'Not Recorded';
                 
-                const tasks = isMorning(session.time) ? ['t1', 't2', 't3'] : ['t8', 't9', 't10'];
+                const tasks = isMorning(session.time) 
+                    ? [{ key: 't1', label: 'Task 1' }, { key: 't2', label: 'Task 2' }, { key: 't3', label: 'Task 3' }] 
+                    : [{ key: 't8', label: 'Task 8' }, { key: 't9', label: 'Task 9' }, { key: 't10', label: 'Task 10' }];
 
                 let totalScore = 0; let totalMax = 0;
                 tasks.forEach(t => { totalScore += parseInt(myMarks[t.key] || 0); totalMax += parseInt(maxMarks[t.key] || 0); });
@@ -723,12 +729,19 @@
     }
 
     // ==========================================
-    // NEW COMPONENT: Teacher Dashboard
+    // UPDATED: Teacher Dashboard (All-Time Stats)
     // ==========================================
     function TeacherDashboard({ students, schedule, cloudMarks }) {
       const isMorning = (timeStr) => timeStr && (timeStr.includes('上午') || timeStr.includes('AM') || timeStr.includes('am'));
 
+      // 1. Calculate stats per session AND aggregate data per student
       const sessionStats = [];
+      const studentAgg = {};
+      
+      students.forEach(s => {
+        studentAgg[s.id] = { name: s.name, class: s.class, totalScore: 0, totalMax: 0, sessions: [] };
+      });
+
       schedule.forEach(session => {
         const isExplanationOnly = ['no', 'false', 'n'].includes((session.hasMarks || '').toLowerCase());
         if (isExplanationOnly) return;
@@ -759,6 +772,11 @@
               const percentage = Math.round((studentTotal / sessionMax) * 100);
               totalPercentage += percentage;
               scoresArray.push({ name: student.name, class: student.class, score: percentage });
+
+              // Aggregate for All-Time stats
+              studentAgg[student.id].totalScore += studentTotal;
+              studentAgg[student.id].totalMax += sessionMax;
+              studentAgg[student.id].sessions.push(percentage); // Keep track of progress
             }
           });
 
@@ -766,9 +784,7 @@
           const count = scoresArray.length;
 
           sessionStats.push({
-            id: session.id,
-            date: session.date,
-            time: session.time,
+            id: session.id, date: session.date, time: session.time,
             average: count > 0 ? Math.round(totalPercentage / count) : null,
             top5: scoresArray.slice(0, 5),
             bottom5: count > 0 ? scoresArray.slice(-5).reverse() : [],
@@ -776,6 +792,23 @@
           });
         }
       });
+
+      // 2. Compute All-Time Stats
+      const overallList = [];
+      Object.keys(studentAgg).forEach(id => {
+        const s = studentAgg[id];
+        if (s.totalMax > 0) {
+          s.overallPercent = Math.round((s.totalScore / s.totalMax) * 100);
+          // Progress: (Latest Session %) - (First Session %)
+          s.progress = s.sessions.length >= 2 ? (s.sessions[s.sessions.length - 1] - s.sessions[0]) : null;
+          overallList.push(s);
+        }
+      });
+
+      const allTimeTop5 = [...overallList].sort((a, b) => b.overallPercent - a.overallPercent).slice(0, 5);
+      const allTimeBottom5 = [...overallList].sort((a, b) => a.overallPercent - b.overallPercent).slice(0, 5);
+      // Most Progress: Only compare students who have attended at least 2 sessions
+      const mostProgress = [...overallList].filter(s => s.progress !== null).sort((a, b) => b.progress - a.progress).slice(0, 5);
 
       return (
         <div className="animate-fade-in">
@@ -787,7 +820,60 @@
               <p>No statistics available yet. Please set max marks and input student grades first.</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-8">
+              
+              {/* ALL TIME STATS WIDGET */}
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 shadow-sm">
+                <h3 className="font-black text-xl text-indigo-900 mb-4 uppercase tracking-wider border-b border-indigo-200 pb-2">🏆 All-Time Leaderboard</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  
+                  {/* Top 5 All-Time */}
+                  <div className="bg-white p-4 rounded-xl shadow-sm">
+                    <h4 className="font-bold text-amber-500 mb-3 text-sm uppercase tracking-wider"><i className="fas fa-star mr-1"></i> Top 5 Overall</h4>
+                    <ul className="space-y-2">
+                      {allTimeTop5.map((s, i) => (
+                        <li key={i} className="flex justify-between items-center text-xs border-b border-slate-50 pb-1">
+                          <span className="font-bold text-slate-700">{i+1}. {s.class} {s.name}</span>
+                          <span className="font-black text-amber-600">{s.overallPercent}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Most Progress */}
+                  <div className="bg-white p-4 rounded-xl shadow-sm">
+                    <h4 className="font-bold text-blue-500 mb-3 text-sm uppercase tracking-wider"><i className="fas fa-rocket mr-1"></i> Most Progress</h4>
+                    <ul className="space-y-2">
+                      {mostProgress.map((s, i) => (
+                        <li key={i} className="flex justify-between items-center text-xs border-b border-slate-50 pb-1">
+                          <span className="font-bold text-slate-700">{i+1}. {s.class} {s.name}</span>
+                          <span className={`font-black ${s.progress > 0 ? 'text-green-500' : 'text-slate-400'}`}>
+                             {s.progress > 0 ? `+${s.progress}` : s.progress}%
+                          </span>
+                        </li>
+                      ))}
+                      {mostProgress.length === 0 && <li className="text-xs text-gray-400">Requires at least 2 test records</li>}
+                    </ul>
+                  </div>
+
+                  {/* Bottom 5 All-Time */}
+                  <div className="bg-white p-4 rounded-xl shadow-sm">
+                    <h4 className="font-bold text-red-400 mb-3 text-sm uppercase tracking-wider"><i className="fas fa-life-ring mr-1"></i> Bottom 5 Overall</h4>
+                    <ul className="space-y-2">
+                      {allTimeBottom5.map((s, i) => (
+                        <li key={i} className="flex justify-between items-center text-xs border-b border-slate-50 pb-1">
+                          <span className="font-bold text-slate-700">{i+1}. {s.class} {s.name}</span>
+                          <span className="font-black text-red-500">{s.overallPercent}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* INDIVIDUAL SESSIONS */}
+              <h3 className="font-black text-xl text-slate-700 mb-2 mt-8 uppercase tracking-wider border-b pb-2">📅 Session by Session</h3>
               {sessionStats.map(stat => (
                 <div key={stat.id} className="bg-white rounded-2xl shadow-sm border p-6">
                   <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -799,7 +885,6 @@
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Top 5 */}
                     <div className="bg-green-50/50 p-4 rounded-xl border border-green-100">
                       <h4 className="font-bold text-green-700 mb-4 flex items-center"><i className="fas fa-trophy mr-2"></i> Top 5 Students</h4>
                       <ul className="space-y-2">
@@ -809,11 +894,8 @@
                             <span className="font-black text-green-700">{s.score}%</span>
                           </li>
                         ))}
-                        {stat.top5.length === 0 && <li className="text-sm text-gray-400 text-center py-2">No data recorded</li>}
                       </ul>
                     </div>
-
-                    {/* Bottom 5 */}
                     <div className="bg-red-50/50 p-4 rounded-xl border border-red-100">
                       <h4 className="font-bold text-red-700 mb-4 flex items-center"><i className="fas fa-exclamation-circle mr-2"></i> Bottom Students</h4>
                       <ul className="space-y-2">
@@ -823,7 +905,6 @@
                             <span className="font-black text-red-700">{s.score}%</span>
                           </li>
                         ))}
-                        {stat.bottom5.length === 0 && <li className="text-sm text-gray-400 text-center py-2">No data recorded</li>}
                       </ul>
                     </div>
                   </div>
@@ -836,13 +917,13 @@
     }
 
     // ==========================================
-    // UPDATED: Teacher Reports with Session Filtering
+    // Teacher Reports
     // ==========================================
     function TeacherReports({ students, schedule, cloudMarks, cloudAttendance }) {
       const [reportType, setReportType] = useState('Both'); 
       const [targetType, setTargetType] = useState('Class'); 
       const [selectedTarget, setSelectedTarget] = useState('All');
-      const [sessionFilter, setSessionFilter] = useState('All'); // NEW: Session Filter
+      const [sessionFilter, setSessionFilter] = useState('All'); 
       
       const allClasses = [...new Set(students.map(s => s.class))].filter(Boolean).sort();
       const isMorning = (timeStr) => timeStr && (timeStr.includes('上午') || timeStr.includes('AM') || timeStr.includes('am'));
@@ -855,7 +936,6 @@
         filteredStudents = students.filter(s => s.id === selectedTarget);
       }
 
-      // Filter schedule columns based on Morning/Afternoon selection
       const filteredSchedule = schedule.filter(session => {
         if (sessionFilter === 'Morning' && !isMorning(session.time)) return false;
         if (sessionFilter === 'Afternoon' && !isAfternoon(session.time)) return false;
@@ -870,8 +950,6 @@
           <div className="print:hidden mb-6 bg-slate-50 p-6 rounded-2xl border border-slate-200">
             <h2 className="text-2xl font-bold mb-4 flex items-center text-indigo-900"><i className="fas fa-print mr-2"></i> Generate Report</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              
-              {/* NEW: Filter by Session Time */}
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Session Filter</label>
                 <select value={sessionFilter} onChange={(e) => setSessionFilter(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
@@ -880,7 +958,6 @@
                   <option value="Afternoon">Afternoon Only (僅課後)</option>
                 </select>
               </div>
-
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Data to Print</label>
                 <select value={reportType} onChange={(e) => setReportType(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
@@ -889,7 +966,6 @@
                   <option value="Performance">Performance Only</option>
                 </select>
               </div>
-              
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Filter By Target</label>
                 <select value={targetType} onChange={(e) => setTargetType(e.target.value)} className="bg-white border-2 border-indigo-200 text-indigo-800 py-2.5 px-4 rounded-xl font-bold w-full">
@@ -897,7 +973,6 @@
                   <option value="Individual">By Individual</option>
                 </select>
               </div>
-              
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Select Specific</label>
                 {targetType === 'Class' ? (
@@ -1019,6 +1094,17 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
+
+    // --- NEW: Register Service Worker for PWA ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+          console.log('ServiceWorker registered:', reg.scope);
+        }).catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
   </script>
 </body>
 </html>
